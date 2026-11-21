@@ -45,8 +45,8 @@ const errors = computed(() => {
   else if (title.length < 3) result.title = 'Назва має містити щонайменше 3 символи.'
   else if (title.length > 80) result.title = 'Максимальна довжина — 80 символів.'
 
-  if (description.length > 300) {
-    result.description = 'Опис не повинен перевищувати 300 символів.'
+  if (description.length > 500) {
+    result.description = 'Опис не повинен перевищувати 500 символів.'
   }
   if (!['todo', 'progress', 'done'].includes(form.status)) {
     result.status = 'Оберіть коректний статус.'
@@ -54,7 +54,7 @@ const errors = computed(() => {
   if (!['low', 'medium', 'high'].includes(form.priority)) {
     result.priority = 'Оберіть коректний пріоритет.'
   }
-  if (!isValidDate(form.dueDate)) {
+  if (form.dueDate && !isValidDate(form.dueDate)) {
     result.dueDate = 'Укажіть коректну дату завершення.'
   }
   return result
@@ -94,7 +94,7 @@ function submitForm() {
       </button>
     </div>
 
-    <form class="tf4-form" novalidate @submit.prevent="submitForm">
+    <form class="tf4-form" @submit.prevent="submitForm">
       <div class="tf4-field tf4-field--wide">
         <label for="tf4-title">Назва завдання *</label>
         <input id="tf4-title" v-model.trim="form.title" type="text"
@@ -111,10 +111,10 @@ function submitForm() {
       <div class="tf4-field tf4-field--wide">
         <label for="tf4-description">Опис</label>
         <textarea id="tf4-description" v-model.trim="form.description"
-          placeholder="Що потрібно зробити?" rows="3" maxlength="300"
+          placeholder="Що потрібно зробити?" rows="3" maxlength="500"
           :aria-invalid="showErrors && !!errors.description"
           :aria-describedby="showErrors && errors.description ? 'tf4-description-hint tf4-description-error' : 'tf4-description-hint'"></textarea>
-        <small id="tf4-description-hint">Необов'язкове поле. Залишилось: {{ 300 - form.description.length }}</small>
+        <small id="tf4-description-hint">Необов'язкове поле. Залишилось: {{ 500 - form.description.length }}</small>
         <p v-if="showErrors && errors.description" id="tf4-description-error" class="tf4-error">
           {{ errors.description }}
         </p>
@@ -145,10 +145,9 @@ function submitForm() {
       </div>
 
       <div class="tf4-field tf4-field--wide">
-        <label for="tf4-date">Дата завершення *</label>
+        <label for="tf4-date">Дата завершення</label>
         <input id="tf4-date" v-model="form.dueDate" type="date"
           :aria-invalid="showErrors && !!errors.dueDate"
-          aria-required="true"
           :aria-describedby="showErrors && errors.dueDate ? 'tf4-date-error' : undefined" />
 
         <p v-if="showErrors && errors.dueDate" id="tf4-date-error" class="tf4-error">

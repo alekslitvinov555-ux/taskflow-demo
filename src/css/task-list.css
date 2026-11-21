@@ -1,0 +1,104 @@
+.tf5-panel,
+dialog.tf5-dialog {
+  box-sizing: border-box;
+  padding: 20px;
+  border: 1px solid #2d4765;
+  border-radius: 16px;
+  background: #13243a;
+  color: #edf4ff;
+}
+
+.tf5-panel { margin: 22px 0; }
+
+.tf5-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
+}
+
+.tf5-header h1,
+.tf5-header .tf4-new-task { margin: 0; }
+
+.tf5-panel h2,
+.tf5-dialog h2 {
+  margin: 0 0 14px;
+  font-size: 19px;
+}
+
+.tf5-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tf5-controls-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.tf5-search { grid-column: 1 / -1; }
+
+.tf5-controls-grid input,
+.tf5-controls-grid select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #526c8c;
+  border-radius: 9px;
+  background: #0c1728;
+  color: #f0f7ff;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.tf5-controls-grid :focus-visible,
+.tf5-incomplete input:focus-visible {
+  outline: 2px solid #52c7f4;
+  outline-offset: 2px;
+}
+
+.tf5-controls-grid select { appearance: auto; }
+
+.tf5-options,
+.tf5-summary,
+.tf5-incomplete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf5-options { margin-top: 14px; }
+.tf5-incomplete input { accent-color: #35b4e5; }
+
+.tf3-action.tf5-danger {
+  border-color: #b85d6a;
+  color: #ffd1d6;
+}
+
+.tf3-action.tf5-danger:hover { background: #5c2b38; }
+
+.tf3-card-title,
+.tf3-card-description,
+.tf4-preview p,
+.tf4-feedback { overflow-wrap: anywhere; }
+
+dialog.tf5-dialog {
+  width: min(400px, calc(100% - 32px));
+  overflow-wrap: anywhere;
+}
+
+.tf5-dialog::backdrop { background: rgb(5 12 22 / 75%); }
+.tf5-dialog .tf5-options { justify-content: flex-end; }
+
+@media (max-width: 680px) {
+  .tf5-panel { padding: 14px; }
+  .tf5-controls-grid { grid-template-columns: minmax(0, 1fr); }
+}

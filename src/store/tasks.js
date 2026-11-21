@@ -27,17 +27,18 @@ function normalizeTaskData(data) {
     : ''
 
   if (title.length < 3 || title.length > 80) return null
-  if (description.length > 300) return null
+  if (description.length > 500) return null
   if (!allowedStatuses.includes(data.status)) return null
   if (!allowedPriorities.includes(data.priority)) return null
-  if (!validDate(data.dueDate)) return null
+  const dueDate = data.dueDate ?? ''
+  if (dueDate !== '' && !validDate(dueDate)) return null
 
   return {
     title,
     description,
     status: data.status,
     priority: data.priority,
-    dueDate: data.dueDate,
+    dueDate,
   }
 }
 
@@ -76,4 +77,12 @@ export function setTaskPriority({ id, priority }) {
   if (!allowedPriorities.includes(priority)) return
   const task = taskState.tasks.find((item) => item.id === id)
   if (task) task.priority = priority
+}
+
+export function deleteTask(id) {
+  const index = taskState.tasks.findIndex((task) => task.id === id)
+  if (index === -1) return false
+
+  taskState.tasks.splice(index, 1)
+  return true
 }
