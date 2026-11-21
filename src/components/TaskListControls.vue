@@ -5,16 +5,21 @@ defineProps({
   search: { type: String, default: '' },
   status: { type: String, default: 'all' },
   priority: { type: String, default: 'all' },
+  project: { type: String, default: 'all' },
+  projects: { type: Array, required: true },
   sort: { type: String, default: 'newest' },
   incomplete: { type: Boolean, default: false },
+  onlyWithoutDueDate: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
   'update:search',
   'update:status',
   'update:priority',
+  'update:project',
   'update:sort',
   'update:incomplete',
+  'update:onlyWithoutDueDate',
   'reset',
 ])
 
@@ -57,6 +62,14 @@ function clearSearch() {
       </label>
 
       <label>
+        Проєкт
+        <select :value="project" @change="emit('update:project', $event.target.value)">
+          <option value="all">Усі проєкти</option>
+          <option v-for="item in projects" :key="item.id" :value="item.id">{{ item.title }}</option>
+        </select>
+      </label>
+
+      <label>
         Сортування
         <select :value="sort" @change="emit('update:sort', $event.target.value)">
           <option value="newest">Спочатку нові</option>
@@ -74,6 +87,11 @@ function clearSearch() {
         <input type="checkbox" :checked="incomplete"
           @change="emit('update:incomplete', $event.target.checked)" />
         Тільки невиконані
+      </label>
+      <label class="tf5-incomplete">
+        <input type="checkbox" :checked="onlyWithoutDueDate"
+          @change="emit('update:onlyWithoutDueDate', $event.target.checked)" />
+        Лише без терміну
       </label>
       <button v-if="search" type="button" class="tf3-action"
         @click="clearSearch">Очистити пошук</button>

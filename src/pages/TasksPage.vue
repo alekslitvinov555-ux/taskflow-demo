@@ -1,89 +1,60 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import AppTabbar from '../components/AppTabbar.vue'
 
 import TaskCard from '../components/TaskCard.vue'
 import TaskForm from '../components/TaskForm.vue'
 import TaskCounter from '../components/TaskCounter.vue'
 import TaskListControls from '../components/TaskListControls.vue'
-import {
-  taskState,
-  addTask,
-  updateTask,
-  deleteTask,
-  setTaskStatus,
-  setTaskPriority,
-} from '../store/tasks.js'
+import { useTasksStore } from '../store/tasks.js'
+import { useProjectsStore } from '../store/projects.js'
 import '../css/task-components.css'
 import '../css/task-form.css'
 import '../css/task-list.css'
 
-const searchText = ref('')
-const selectedStatus = ref('all')
-const selectedPriority = ref('all')
-const sortOrder = ref('newest')
-const incompleteOnly = ref(false)
+const taskStore = useTasksStore()
+const projectStore = useProjectsStore()
+const {
+  tasks, visibleTasks, totalTasks, visibleCompletionPercent, searchText,
+  selectedStatus, selectedPriority, selectedProject, sortOrder, incompleteOnly, onlyWithoutDueDate,
+} = storeToRefs(taskStore)
+const { projects, projectStats } = storeToRefs(projectStore)
+
+const newProjectTitle = ref('')
+const newProjectError = ref('')
 const formVisible = ref(false)
 const editingId = ref(null)
 const formAnchor = ref(null)
 const feedback = ref('')
 const deleteDialog = ref(null)
 const pendingDelete = ref(null)
+const projectDialog = ref(null)
+const pendingProject = ref(null)
 const listHeading = ref(null)
 
-const priorityOrder = { high: 0, medium: 1, low: 2 }
-const statusOrder = { progress: 0, todo: 1, done: 2 }
-
-function compareDates(a, b, direction) {
-  if (!a.dueDate) return b.dueDate ? 1 : 0
-  if (!b.dueDate) return -1
-  return direction * a.dueDate.localeCompare(b.dueDate)
-}
-
-const sortTasks = {
-  newest: (a, b) => b.id - a.id,
-  title: (a, b) => a.title.localeCompare(b.title, 'uk-UA', { sensitivity: 'base' }),
-  priority: (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority],
-  dueDate: (a, b) => compareDates(a, b, 1),
-  dueDateDesc: (a, b) => compareDates(a, b, -1),
-  status: (a, b) => statusOrder[a.status] - statusOrder[b.status],
-}
-
-const visibleTasks = computed(() => {
-  const search = searchText.value.trim().toLocaleLowerCase('uk-UA')
-  const result = taskState.tasks.filter((task) => {
-    const matchesText = task.title.toLocaleLowerCase('uk-UA').includes(search)
-      || (task.description ?? '').toLocaleLowerCase('uk-UA').includes(search)
-    const matchesStatus = selectedStatus.value === 'all' || task.status === selectedStatus.value
-    const matchesPriority = selectedPriority.value === 'all' || task.priority === selectedPriority.value
-    const matchesIncomplete = !incompleteOnly.value || task.status !== 'done'
-
-    return matchesText && matchesStatus && matchesPriority && matchesIncomplete
-  })
-  const compare = sortTasks[sortOrder.value]
-  return result.sort((a, b) => compare(a, b) || sortTasks.newest(a, b))
-})
-
-const completionPercent = computed(() => {
-  const tasks = visibleTasks.value
-  const completed = tasks.filter((task) => task.status === 'done').length
-  return tasks.length ? Math.round(completed / tasks.length * 100) : 0
-})
-
 const editingTask = computed(() => (
-  taskState.tasks.find((task) => task.id === editingId.value) ?? null
+  tasks.value.find((task) => task.id === editingId.value) ?? null
+))
+const currentProject = computed(() => (
+  projectStats.value.find((project) => project.id === selectedProject.value) ?? null
 ))
 
-function resetFilters() {
-  searchText.value = ''
-  selectedStatus.value = 'all'
-  selectedPriority.value = 'all'
-  sortOrder.value = 'newest'
-  incompleteOnly.value = false
+function createProject() {
+  const project = projectStore.addProject(newProjectTitle.value)
+  newProjectError.value = ''
+  if (!project) {
+    newProjectError.value = 'Введіть унікальну назву від 3 до 40 символів.'
+    return
+  }
+
+  newProjectTitle.value = ''
+  if (!formVisible.value) selectedProject.value = project.id
+  feedback.value = `Проєкт «${project.title}» створено.`
 }
 
 function showAllTasks() {
-  resetFilters()
+  taskStore.resetFilters()
   listHeading.value?.focus()
 }
 
@@ -114,8 +85,8 @@ function cancelForm() {
 function saveTask(data) {
   const isEditing = editingId.value !== null
   const saved = isEditing
-    ? updateTask({ id: editingId.value, ...data })
-    : addTask(data)
+    ? taskStore.updateTask({ id: editingId.value, ...data })
+    : taskStore.addTask(data)
 
   if (!saved) {
     feedback.value = 'Не вдалося зберегти завдання. Перевірте дані форми.'
@@ -129,7 +100,7 @@ function saveTask(data) {
 }
 
 async function askDelete(id) {
-  const task = taskState.tasks.find((item) => item.id === id)
+  const task = tasks.value.find((item) => item.id === id)
   if (!task) return
 
   pendingDelete.value = task
@@ -140,12 +111,27 @@ async function askDelete(id) {
 async function confirmDelete() {
   const task = pendingDelete.value
   deleteDialog.value.close()
-  if (!task || !deleteTask(task.id)) return
+  if (!task || !taskStore.deleteTask(task.id)) return
 
   if (editingId.value === task.id) cancelForm()
   feedback.value = `Завдання «${task.title}» видалено.`
   await nextTick()
   listHeading.value?.focus({ preventScroll: true })
+}
+
+async function askMoveProject() {
+  pendingProject.value = currentProject.value
+  await nextTick()
+  projectDialog.value.showModal()
+}
+
+function confirmMoveProject() {
+  const project = pendingProject.value
+  projectDialog.value.close()
+  if (!project) return
+
+  const count = taskStore.moveProjectToProgress(project.id)
+  feedback.value = `Проєкт «${project.title}». Завдань переведено в роботу: ${count}.`
 }
 </script>
 
@@ -154,7 +140,7 @@ async function confirmDelete() {
     <f7-navbar title="Мої завдання" />
     <div class="tf3-container">
       <section class="tf3-hero tf5-header">
-        <h1>Керування завданнями</h1>
+        <h1>Керування завданнями й проєктами</h1>
         <button type="button" class="tf4-new-task" @click="createTask">
           + Додати завдання
         </button>
@@ -162,31 +148,62 @@ async function confirmDelete() {
 
       <p v-if="feedback" class="tf4-feedback" role="status">{{ feedback }}</p>
 
+      <section class="tf5-panel" aria-labelledby="tf6-projects-title">
+        <h2 id="tf6-projects-title">Мої проєкти</h2>
+        <ul class="tf6-projects">
+          <li v-for="project in projectStats" :key="project.id" class="tf6-project">
+            <strong>{{ project.title }}</strong>
+            <span>Завдань: {{ project.total }}</span>
+          </li>
+        </ul>
+        <form class="tf6-project-form" @submit.prevent="createProject">
+          <label>
+            Назва нового проєкту
+            <input v-model.trim="newProjectTitle" type="text" maxlength="40"
+              placeholder="Наприклад, Лабораторні" :aria-invalid="!!newProjectError"
+              :aria-describedby="newProjectError ? 'tf6-new-project-error' : undefined"
+              @input="newProjectError = ''" />
+          </label>
+          <button type="submit" class="tf3-action tf3-action--primary">Створити проєкт</button>
+        </form>
+        <p v-if="newProjectError" id="tf6-new-project-error" class="tf4-error" role="alert">
+          {{ newProjectError }}
+        </p>
+      </section>
+
       <section v-if="formVisible" ref="formAnchor" class="tf4-form-section">
-        <TaskForm :key="editingId ?? 'new'" :task="editingTask"
+        <TaskForm :key="editingId ?? 'new'" :task="editingTask" :projects="projects"
+          :default-project-id="currentProject?.id ?? 'general'"
           @save="saveTask" @cancel="cancelForm" />
       </section>
 
       <TaskListControls v-model:search="searchText" v-model:status="selectedStatus"
         v-model:priority="selectedPriority" v-model:sort="sortOrder"
-        v-model:incomplete="incompleteOnly" @reset="resetFilters" />
+        v-model:project="selectedProject" v-model:incomplete="incompleteOnly"
+        v-model:only-without-due-date="onlyWithoutDueDate" :projects="projects"
+        @reset="taskStore.resetFilters" />
 
       <section class="tf3-section">
         <div class="tf3-section-heading">
           <h2 ref="listHeading" tabindex="-1">Список завдань</h2>
           <div class="tf5-summary">
-            <TaskCounter :count="visibleTasks.length" :total="taskState.tasks.length" />
-            <span class="tf3-counter">Виконано: {{ completionPercent }}%</span>
+            <TaskCounter :count="visibleTasks.length" :total="totalTasks" />
+            <span class="tf3-counter">Виконано: {{ visibleCompletionPercent }}%</span>
           </div>
+        </div>
+        <div v-if="currentProject?.total" class="tf6-project-actions">
+          <button type="button" class="tf3-action" @click="askMoveProject">
+            Перевести весь проєкт у роботу
+          </button>
         </div>
         <div v-if="visibleTasks.length" class="tf3-task-grid">
           <TaskCard v-for="task in visibleTasks" :key="task.id"
-            :task="task" :editable="true"
-            @status-change="setTaskStatus"
-            @priority-change="setTaskPriority"
+            :task="task" :editable="true" :project-title="projectStore.projectTitle(task.projectId)"
+            @status-change="taskStore.setTaskStatus"
+            @priority-change="taskStore.setTaskPriority"
             @edit="editTask" @delete="askDelete" />
         </div>
-        <div v-else-if="!taskState.tasks.length" class="tf3-empty">
+        <div v-else-if="!totalTasks" class="tf3-empty">
           Список порожній. Скористайтеся кнопкою «Додати завдання», щоб створити запис.
         </div>
         <div v-else class="tf3-empty">
@@ -206,6 +223,19 @@ async function confirmDelete() {
             @click="deleteDialog.close()">Скасувати</button>
           <button type="button" class="tf3-action tf5-danger"
             @click="confirmDelete">Видалити</button>
+        </div>
+      </dialog>
+      <dialog ref="projectDialog" class="tf5-dialog" aria-labelledby="tf6-move-title"
+        aria-describedby="tf6-move-description" @close="pendingProject = null">
+        <h2 id="tf6-move-title">Перевести проєкт у роботу?</h2>
+        <p id="tf6-move-description">
+          Усі завдання проєкту «{{ pendingProject?.title }}» отримають статус «У роботі».
+        </p>
+        <div class="tf5-options">
+          <button type="button" class="tf3-action" autofocus
+            @click="projectDialog.close()">Скасувати</button>
+          <button type="button" class="tf3-action tf3-action--primary"
+            @click="confirmMoveProject">Перевести в роботу</button>
         </div>
       </dialog>
     </div>

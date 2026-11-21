@@ -3,6 +3,8 @@ import { computed, reactive, ref } from 'vue'
 
 const props = defineProps({
   task: { type: Object, default: null },
+  projects: { type: Array, required: true },
+  defaultProjectId: { type: String, default: 'general' },
 })
 const emit = defineEmits(['save', 'cancel'])
 
@@ -12,6 +14,7 @@ const form = reactive({
   description: props.task?.description ?? '',
   status: props.task?.status ?? 'todo',
   priority: props.task?.priority ?? 'medium',
+  projectId: props.task?.projectId ?? props.defaultProjectId,
 
   dueDate: props.task?.dueDate ?? '',
 })
@@ -54,6 +57,9 @@ const errors = computed(() => {
   if (!['low', 'medium', 'high'].includes(form.priority)) {
     result.priority = 'Оберіть коректний пріоритет.'
   }
+  if (!props.projects.some((project) => project.id === form.projectId)) {
+    result.project = 'Оберіть проєкт зі списку.'
+  }
   if (form.dueDate && !isValidDate(form.dueDate)) {
     result.dueDate = 'Укажіть коректну дату завершення.'
   }
@@ -63,6 +69,7 @@ const errors = computed(() => {
 function clearForm() {
   Object.assign(form, {
     title: '', description: '', status: 'todo', priority: 'medium', dueDate: '',
+    projectId: props.defaultProjectId,
   })
   showErrors.value = false
 }
@@ -76,6 +83,7 @@ function submitForm() {
     description: form.description.trim(),
     status: form.status,
     priority: form.priority,
+    projectId: form.projectId,
     dueDate: form.dueDate,
   })
 }
@@ -144,7 +152,21 @@ function submitForm() {
         <p v-if="showErrors && errors.priority" id="tf4-priority-error" class="tf4-error">{{ errors.priority }}</p>
       </div>
 
-      <div class="tf4-field tf4-field--wide">
+      <div class="tf4-field">
+        <label for="tf6-form-project">Проєкт *</label>
+        <select id="tf6-form-project" v-model="form.projectId" aria-required="true"
+          :aria-invalid="showErrors && !!errors.project"
+          :aria-describedby="showErrors && errors.project ? 'tf6-project-error' : undefined">
+          <option v-for="project in projects" :key="project.id" :value="project.id">
+            {{ project.title }}
+          </option>
+        </select>
+        <p v-if="showErrors && errors.project" id="tf6-project-error" class="tf4-error">
+          {{ errors.project }}
+        </p>
+      </div>
+
+      <div class="tf4-field">
         <label for="tf4-date">Дата завершення</label>
         <input id="tf4-date" v-model="form.dueDate" type="date"
           :aria-invalid="showErrors && !!errors.dueDate"

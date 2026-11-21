@@ -5,6 +5,7 @@ import PriorityBadge from './PriorityBadge.vue'
 
 const props = defineProps({
   task: { type: Object, required: true },
+  projectTitle: { type: String, required: true },
   editable: { type: Boolean, default: false },
 })
 const emit = defineEmits(['status-change', 'priority-change', 'edit', 'delete'])
@@ -53,6 +54,7 @@ function changePriority() {
         <StatusBadge :status="task.status" />
       </div>
       <p class="tf3-card-description">{{ task.description || 'Без опису' }}</p>
+      <p class="tf6-card-project">Проєкт: {{ projectTitle }}</p>
       <div class="tf3-card-meta">
         <div class="tf3-meta-item">
           <span class="tf3-meta-label">Пріоритет:</span>
